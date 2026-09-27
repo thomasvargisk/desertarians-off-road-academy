@@ -1,0 +1,5 @@
+import Link from "next/link";
+
+export function SiteFooter() {
+  return <footer className="border-t border-slate-800 bg-[#04142f] text-white"><div className="mx-auto grid max-w-7xl gap-8 px-5 py-10 md:grid-cols-3"><div><h2 className="text-xl font-bold">Desertarians Off Road Academy</h2><p className="mt-3 max-w-md text-sm leading-6 text-blue-100">A UAE community for learning, safe off-road driving, camping and responsible desert exploration.</p></div><div><h3 className="font-bold text-amber-300">Explore</h3><div className="mt-3 grid gap-2 text-sm"><Link href="/drives">Club drives</Link><Link href="/academy">Academy</Link><Link href="/camping">Camping group</Link></div></div><div><h3 className="font-bold text-amber-300">Review status</h3><p className="mt-3 text-sm leading-6 text-blue-100">Public club review preview. Joining, subscriptions and payments are not live.</p></div></div><div className="border-t border-white/10 px-5 py-4 text-center text-xs text-blue-200">© {new Date().getFullYear()} Desertarians Off Road Academy</div></footer>;
+}

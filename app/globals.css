@@ -40,6 +40,18 @@ body {
   color: hsl(var(--foreground));
 }
 
+body { margin: 0; }
+
+.site-main > section > nav,
+.site-main > section > footer { display: none; }
+
+.community-card { border: 1px solid hsl(var(--border)); border-radius: 0.65rem; background: hsl(var(--card)); box-shadow: 0 8px 24px rgb(2 20 47 / 0.07); }
+.section-kicker { margin-bottom: 0.35rem; color: #b91c1c; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+.section-title { font-size: clamp(1.6rem, 3vw, 2.25rem); font-weight: 700; line-height: 1.15; }
+.card-heading { border-bottom: 1px solid hsl(var(--border)); background: #082b59; padding: 0.85rem 1.1rem; color: white; font-weight: 700; }
+.feature-link { display: flex; min-height: 8rem; flex-direction: column; justify-content: space-between; border: 1px solid rgb(255 255 255 / 0.25); border-radius: 0.6rem; background: rgb(255 255 255 / 0.07); padding: 1.25rem; color: white !important; }
+.feature-link span { margin-top: 1.5rem; color: #fde68a; font-size: 0.85rem; }
+
 a {
   color: hsl(var(--link)) !important;
 }
