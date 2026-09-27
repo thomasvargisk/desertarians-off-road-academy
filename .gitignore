@@ -1,0 +1,35 @@
+# Dependencies and builds
+node_modules/
+.next/
+dist/
+build/
+coverage/
+out/
+*.tsbuildinfo
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+tmp/
+.cache/
+
+.vinext/
+.wrangler/
+
+# Internal agent briefs, dispatch records, and review working papers
+AGENTS.md
+BRIEF*.md
+REPORT*.md
+reports/
+docs/reviews/
