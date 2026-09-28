@@ -1,5 +1,6 @@
 import { getDb } from "@/lib/db/client";
 import { hashPassword } from "@/lib/auth/password";
+import { destroyAllUserSessions } from "@/lib/auth/session";
 
 const RESET_DURATION_MS = 60 * 60 * 1000; // 1 hour
 
@@ -59,6 +60,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
     )
     .bind(hash, salt, user.id)
     .run();
+  await destroyAllUserSessions(user.id);
 
   return { ok: true };
 }

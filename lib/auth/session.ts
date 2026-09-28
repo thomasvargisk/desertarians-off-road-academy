@@ -42,6 +42,12 @@ export async function destroySession(): Promise<void> {
   cookieStore.delete(SESSION_COOKIE);
 }
 
+/** Invalidates every session for a user. Call on password change/reset so a stolen session token doesn't survive a credential rotation. */
+export async function destroyAllUserSessions(userId: string): Promise<void> {
+  const db = await getDb();
+  await db.prepare("DELETE FROM sessions WHERE user_id = ?").bind(userId).run();
+}
+
 export async function getCurrentUser(): Promise<SessionUser | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
@@ -52,18 +58,33 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
     .prepare(
       `SELECT users.id as id, users.email as email, users.display_name as displayName,
               users.is_admin as isAdmin, users.avatar_path as avatarPath, users.bio as bio,
-              sessions.expires_at as expiresAt
+              users.last_seen_at as lastSeenAt, sessions.expires_at as expiresAt
        FROM sessions JOIN users ON users.id = sessions.user_id
        WHERE sessions.token = ?`
     )
     .bind(token)
-    .first<{ id: string; email: string; displayName: string; isAdmin: number; avatarPath: string | null; bio: string | null; expiresAt: string }>();
+    .first<{
+      id: string;
+      email: string;
+      displayName: string;
+      isAdmin: number;
+      avatarPath: string | null;
+      bio: string | null;
+      lastSeenAt: string | null;
+      expiresAt: string;
+    }>();
 
   if (!row) return null;
   if (Date.parse(row.expiresAt) <= Date.now()) {
     await db.prepare("DELETE FROM sessions WHERE token = ?").bind(token).run();
     return null;
   }
+
+  const PRESENCE_THROTTLE_MS = 60 * 1000;
+  if (!row.lastSeenAt || Date.now() - Date.parse(row.lastSeenAt) > PRESENCE_THROTTLE_MS) {
+    await db.prepare("UPDATE users SET last_seen_at = ? WHERE id = ?").bind(new Date().toISOString(), row.id).run();
+  }
+
   return {
     id: row.id,
     email: row.email,

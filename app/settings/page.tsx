@@ -30,7 +30,9 @@ export default async function SettingsPage({
     if (!result.ok) {
       redirect(`/settings?passwordError=${encodeURIComponent(result.error ?? "Update failed.")}`);
     }
-    redirect("/settings?saved=password");
+    // changePassword invalidates every session for this account, including the current one --
+    // send the user to log in again rather than back to a page their cookie no longer unlocks.
+    redirect(`/login?error=${encodeURIComponent("Password changed. Please log in again.")}`);
   }
 
   async function updateAvatarAction(formData: FormData) {

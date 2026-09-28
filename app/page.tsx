@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getCommunityStats } from "@/lib/stats/actions";
 import { getTopContributors } from "@/lib/reputation/actions";
+import { getOnlineUsers } from "@/lib/presence/actions";
 
 const drives = [
   { day: "FR", date: "02", title: "Newbie Desert Drive", level: "Newbie", area: "Dubai desert area", time: "6:00 AM" },
@@ -21,6 +22,7 @@ const academyLevels = ["Newbie", "Fewbie", "Fewbie Plus", "Intermediate", "Advan
 export default async function HomePage() {
   const stats = await getCommunityStats();
   const contributors = await getTopContributors(5);
+  const online = await getOnlineUsers(10);
   return <div>
     <section className="border-b border-desert-border bg-[#061a3c] text-white">
       <div className="mx-auto grid max-w-7xl items-center gap-8 px-5 py-10 md:grid-cols-[1fr_420px] md:py-14">
@@ -37,6 +39,7 @@ export default async function HomePage() {
       </div>
       <aside className="space-y-6">
         <section className="community-card"><div className="card-heading">Popular Contributors</div><div className="divide-y divide-desert-border">{contributors.length === 0 ? <p className="p-5 text-sm text-desert-muted">No activity yet.</p> : contributors.map((c, index) => <Link key={c.userId} href={`/members/${c.userId}`} className="flex items-center gap-3 p-4 hover:bg-black/[0.025]"><span className="w-5 text-center text-sm font-bold text-desert-muted">{index + 1}</span>{c.avatarPath ? <Image src={c.avatarPath} alt={c.displayName} width={32} height={32} className="h-8 w-8 rounded-full object-cover" /> : <span className="flex h-8 w-8 items-center justify-center rounded-full bg-desert-accent text-xs font-bold text-desert-dark">{c.displayName.charAt(0).toUpperCase()}</span>}<span className="flex-1 text-sm font-bold">{c.displayName}</span><span className="text-xs text-desert-muted">{c.score} pts</span></Link>)}</div></section>
+        <section className="community-card"><div className="card-heading">Who&apos;s Online</div><div className="p-5">{online.count === 0 ? <p className="text-sm text-desert-muted">No one online right now.</p> : <><div className="flex flex-wrap gap-2 mb-3">{online.users.map((u) => u.avatarPath ? <Image key={u.id} src={u.avatarPath} alt={u.displayName} width={32} height={32} title={u.displayName} className="h-8 w-8 rounded-full object-cover border border-desert-border" /> : <span key={u.id} title={u.displayName} className="flex h-8 w-8 items-center justify-center rounded-full bg-desert-accent text-xs font-bold text-desert-dark">{u.displayName.charAt(0).toUpperCase()}</span>)}</div><p className="text-sm text-desert-muted">{online.count} {online.count === 1 ? "Member" : "Members"}</p></>}</div></section>
         <section className="community-card"><div className="card-heading">Club announcements</div><div className="space-y-4 p-5"><article><a href="#review" className="font-bold">Welcome to the Desertarians website review</a><p className="mt-1 text-sm text-desert-muted">Help us shape the club’s new digital home.</p></article><article><Link href="/academy" className="font-bold">Academy safety charter</Link><p className="mt-1 text-sm text-desert-muted">How we prepare, communicate and look after one another.</p></article></div></section>
         <section className="community-card"><div className="card-heading">Member spotlight</div><div className="p-5 text-center"><div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-[#082b59] to-amber-500 text-2xl font-bold text-white">D</div><h3 className="mt-4 font-bold">The Desertarians community</h3><p className="mt-2 text-sm leading-6 text-desert-muted">Different vehicles, backgrounds and experience levels—one shared respect for the desert.</p></div></section>
         <section className="community-card"><div className="card-heading">Community at a glance</div><dl className="grid grid-cols-2 gap-px bg-desert-border"><div className="bg-desert-card p-4 text-center"><dt className="text-xs text-desert-muted">Total members</dt><dd className="mt-1 text-2xl font-bold">{stats.totalMembers}</dd></div><div className="bg-desert-card p-4 text-center"><dt className="text-xs text-desert-muted">Club drives</dt><dd className="mt-1 text-2xl font-bold">{stats.totalDrives}</dd></div><div className="bg-desert-card p-4 text-center"><dt className="text-xs text-desert-muted">Forum posts</dt><dd className="mt-1 text-2xl font-bold">{stats.totalForumPosts}</dd></div><div className="bg-desert-card p-4 text-center"><dt className="text-xs text-desert-muted">Marketplace listings</dt><dd className="mt-1 text-2xl font-bold">{stats.totalMarketplaceListings}</dd></div></dl></section>

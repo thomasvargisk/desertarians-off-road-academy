@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { getDb, getAvatarBucket } from "@/lib/db/client";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { destroyAllUserSessions } from "@/lib/auth/session";
 
 export interface ActionResult {
   ok: boolean;
@@ -44,6 +45,7 @@ export async function changePassword(userId: string, formData: FormData): Promis
 
   const { hash, salt } = await hashPassword(newPassword);
   await db.prepare("UPDATE users SET password_hash = ?, password_salt = ? WHERE id = ?").bind(hash, salt, userId).run();
+  await destroyAllUserSessions(userId);
   revalidatePath("/settings");
   return { ok: true };
 }
