@@ -10,7 +10,9 @@
     "test": "vitest run",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
-    "build": "next build"
+    "build": "next build",
+    "start": "next start",
+    "set-admin": "node scripts/set-admin.mjs"
   },
   "keywords": [],
   "author": "",

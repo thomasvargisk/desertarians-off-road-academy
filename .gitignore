@@ -24,6 +24,10 @@ Thumbs.db
 tmp/
 .cache/
 
+# Runtime data
+data/*.db
+public/uploads/
+
 .vinext/
 .wrangler/
 
