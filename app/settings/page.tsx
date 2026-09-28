@@ -13,7 +13,7 @@ export default async function SettingsPage({
   if (!sessionUser) redirect("/login");
   const userId = sessionUser.id;
   const { profileError, passwordError, avatarError, saved } = await searchParams;
-  const profile = getProfile(userId);
+  const profile = await getProfile(userId);
 
   async function updateProfileAction(formData: FormData) {
     "use server";

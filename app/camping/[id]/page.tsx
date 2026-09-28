@@ -6,11 +6,11 @@ import { CommentSection } from "@/components/comment-section";
 
 export default async function TripDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const trip = getTrip(id);
+  const trip = await getTrip(id);
   if (!trip) notFound();
 
   const user = await getCurrentUser();
-  const alreadyRsvped = user ? hasUserRsvped(user.id, id) : false;
+  const alreadyRsvped = user ? await hasUserRsvped(user.id, id) : false;
   const full = trip.rsvp_count >= trip.capacity;
 
   async function rsvpAction() {

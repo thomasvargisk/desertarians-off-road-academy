@@ -6,11 +6,11 @@ import { CommentSection } from "@/components/comment-section";
 
 export default async function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const course = getCourse(id);
+  const course = await getCourse(id);
   if (!course) notFound();
 
   const user = await getCurrentUser();
-  const alreadyEnrolled = user ? hasUserEnrolled(user.id, id) : false;
+  const alreadyEnrolled = user ? await hasUserEnrolled(user.id, id) : false;
   const full = course.enrolled_count >= course.capacity;
 
   async function enrollAction() {

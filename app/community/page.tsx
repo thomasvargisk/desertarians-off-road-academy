@@ -10,7 +10,7 @@ export default async function CommunityPage({
   const { q, page: pageParam } = await searchParams;
   const page = Math.max(1, Number(pageParam) || 1);
   const user = await getCurrentUser();
-  const { posts, totalCount } = listPosts(q, page);
+  const { posts, totalCount } = await listPosts(q, page);
   const totalPages = Math.max(1, Math.ceil(totalCount / 20));
 
   async function createPostAction(formData: FormData) {

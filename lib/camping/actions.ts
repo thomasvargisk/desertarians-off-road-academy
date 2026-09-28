@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client";
 
@@ -13,49 +12,52 @@ export interface CampingTrip {
   rsvp_count: number;
 }
 
-export function listTrips(): CampingTrip[] {
-  const db = getDb();
-  return db
+export async function listTrips(): Promise<CampingTrip[]> {
+  const db = await getDb();
+  const { results } = await db
     .prepare(
       `SELECT camping_trips.*,
               (SELECT COUNT(*) FROM camping_rsvps WHERE camping_rsvps.trip_id = camping_trips.id) as rsvp_count
        FROM camping_trips ORDER BY trip_date ASC`
     )
-    .all() as unknown as CampingTrip[];
+    .all<CampingTrip>();
+  return results;
 }
 
-export function getTrip(tripId: string): CampingTrip | null {
-  const db = getDb();
-  const row = db
+export async function getTrip(tripId: string): Promise<CampingTrip | null> {
+  const db = await getDb();
+  const row = await db
     .prepare(
       `SELECT camping_trips.*,
               (SELECT COUNT(*) FROM camping_rsvps WHERE camping_rsvps.trip_id = camping_trips.id) as rsvp_count
        FROM camping_trips WHERE camping_trips.id = ?`
     )
-    .get(tripId) as unknown as CampingTrip | undefined;
+    .bind(tripId)
+    .first<CampingTrip>();
   return row ?? null;
 }
 
-export function hasUserRsvped(userId: string, tripId: string): boolean {
-  const db = getDb();
-  const row = db.prepare("SELECT id FROM camping_rsvps WHERE trip_id = ? AND user_id = ?").get(tripId, userId);
+export async function hasUserRsvped(userId: string, tripId: string): Promise<boolean> {
+  const db = await getDb();
+  const row = await db
+    .prepare("SELECT id FROM camping_rsvps WHERE trip_id = ? AND user_id = ?")
+    .bind(tripId, userId)
+    .first();
   return Boolean(row);
 }
 
 export async function rsvpToTrip(userId: string, tripId: string): Promise<{ ok: boolean; error?: string }> {
   "use server";
-  const db = getDb();
-  const trip = getTrip(tripId);
+  const db = await getDb();
+  const trip = await getTrip(tripId);
   if (!trip) return { ok: false, error: "Trip not found." };
-  if (hasUserRsvped(userId, tripId)) return { ok: false, error: "You have already RSVP'd." };
+  if (await hasUserRsvped(userId, tripId)) return { ok: false, error: "You have already RSVP'd." };
   if (trip.rsvp_count >= trip.capacity) return { ok: false, error: "This trip is at capacity." };
 
-  db.prepare("INSERT INTO camping_rsvps (id, trip_id, user_id, created_at) VALUES (?, ?, ?, ?)").run(
-    randomUUID(),
-    tripId,
-    userId,
-    new Date().toISOString()
-  );
+  await db
+    .prepare("INSERT INTO camping_rsvps (id, trip_id, user_id, created_at) VALUES (?, ?, ?, ?)")
+    .bind(crypto.randomUUID(), tripId, userId, new Date().toISOString())
+    .run();
   revalidatePath(`/camping/${tripId}`);
   revalidatePath("/camping");
   return { ok: true };

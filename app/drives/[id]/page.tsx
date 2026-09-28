@@ -6,11 +6,11 @@ import { CommentSection } from "@/components/comment-section";
 
 export default async function DriveDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const drive = getDrive(id);
+  const drive = await getDrive(id);
   if (!drive) notFound();
 
   const user = await getCurrentUser();
-  const alreadyRsvped = user ? hasUserRsvped(user.id, id) : false;
+  const alreadyRsvped = user ? await hasUserRsvped(user.id, id) : false;
   const full = drive.rsvp_count >= drive.capacity;
 
   async function rsvpAction() {

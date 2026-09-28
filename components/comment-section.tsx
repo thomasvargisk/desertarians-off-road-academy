@@ -10,8 +10,8 @@ interface Props {
   deleteAction?: (commentId: string) => () => Promise<void>;
 }
 
-export function CommentSection({ entityType, entityId, user, addAction, deleteAction }: Props) {
-  const comments: Comment[] = listComments(entityType, entityId);
+export async function CommentSection({ entityType, entityId, user, addAction, deleteAction }: Props) {
+  const comments: Comment[] = await listComments(entityType, entityId);
 
   return (
     <div className="mt-8">

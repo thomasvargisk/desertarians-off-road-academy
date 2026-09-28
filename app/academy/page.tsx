@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { listCourses } from "@/lib/academy/actions";
 
-export default function AcademyPage() {
-  const courses = listCourses();
+export default async function AcademyPage() {
+  const courses = await listCourses();
 
   return (
     <section className="min-h-screen bg-desert-bg text-desert-fg">

@@ -11,7 +11,7 @@ export default async function ForgotPasswordPage({
   async function requestResetAction(formData: FormData) {
     "use server";
     const email = String(formData.get("email") ?? "");
-    const result = requestPasswordReset(email);
+    const result = await requestPasswordReset(email);
     if (result.resetLink) {
       redirect(`/forgot-password?link=${encodeURIComponent(result.resetLink)}`);
     }

@@ -5,11 +5,11 @@ import { getPost, listReplies, createReply, deletePost, deleteReply } from "@/li
 
 export default async function PostPage({ params }: { params: Promise<{ postId: string }> }) {
   const { postId } = await params;
-  const post = getPost(postId);
+  const post = await getPost(postId);
   if (!post) notFound();
 
   const user = await getCurrentUser();
-  const replies = listReplies(postId);
+  const replies = await listReplies(postId);
   const canManagePost = Boolean(user) && (user!.id === post.authorId || user!.isAdmin);
 
   async function createReplyAction(formData: FormData) {

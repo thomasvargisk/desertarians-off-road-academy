@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client";
 
@@ -10,9 +9,9 @@ export interface Comment {
   authorName: string;
 }
 
-export function listComments(entityType: string, entityId: string): Comment[] {
-  const db = getDb();
-  return db
+export async function listComments(entityType: string, entityId: string): Promise<Comment[]> {
+  const db = await getDb();
+  const { results } = await db
     .prepare(
       `SELECT comments.id as id, comments.body as body, comments.created_at as createdAt,
               comments.author_id as authorId, users.display_name as authorName
@@ -20,7 +19,9 @@ export function listComments(entityType: string, entityId: string): Comment[] {
        WHERE comments.entity_type = ? AND comments.entity_id = ?
        ORDER BY comments.created_at ASC`
     )
-    .all(entityType, entityId) as unknown as Comment[];
+    .bind(entityType, entityId)
+    .all<Comment>();
+  return results;
 }
 
 export async function createComment(
@@ -34,15 +35,11 @@ export async function createComment(
   const body = String(formData.get("body") ?? "").trim();
   if (!body) return { ok: false, error: "Comment cannot be empty." };
 
-  const db = getDb();
-  db.prepare("INSERT INTO comments (id, entity_type, entity_id, author_id, body, created_at) VALUES (?, ?, ?, ?, ?, ?)").run(
-    randomUUID(),
-    entityType,
-    entityId,
-    userId,
-    body,
-    new Date().toISOString()
-  );
+  const db = await getDb();
+  await db
+    .prepare("INSERT INTO comments (id, entity_type, entity_id, author_id, body, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(crypto.randomUUID(), entityType, entityId, userId, body, new Date().toISOString())
+    .run();
   revalidatePath(revalidatePathValue);
   return { ok: true };
 }
@@ -54,15 +51,16 @@ export async function deleteComment(
   revalidatePathValue: string
 ): Promise<{ ok: boolean; error?: string }> {
   "use server";
-  const db = getDb();
-  const comment = db.prepare("SELECT author_id FROM comments WHERE id = ?").get(commentId) as
-    | { author_id: string }
-    | undefined;
+  const db = await getDb();
+  const comment = await db
+    .prepare("SELECT author_id as authorId FROM comments WHERE id = ?")
+    .bind(commentId)
+    .first<{ authorId: string }>();
   if (!comment) return { ok: false, error: "Comment not found." };
-  if (comment.author_id !== userId && !isAdmin) {
+  if (comment.authorId !== userId && !isAdmin) {
     return { ok: false, error: "Not authorized." };
   }
-  db.prepare("DELETE FROM comments WHERE id = ?").run(commentId);
+  await db.prepare("DELETE FROM comments WHERE id = ?").bind(commentId).run();
   revalidatePath(revalidatePathValue);
   return { ok: true };
 }

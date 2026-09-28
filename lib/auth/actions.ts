@@ -1,6 +1,5 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { getDb } from "@/lib/db/client";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
@@ -32,17 +31,20 @@ export async function signUp(formData: FormData): Promise<ActionResult> {
     return { ok: false, error: "Password must be at least 8 characters." };
   }
 
-  const db = getDb();
-  const existing = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
+  const db = await getDb();
+  const existing = await db.prepare("SELECT id FROM users WHERE email = ?").bind(email).first();
   if (existing) {
     return { ok: false, error: "An account with that email already exists." };
   }
 
-  const { hash, salt } = hashPassword(password);
-  const id = randomUUID();
-  db.prepare(
-    "INSERT INTO users (id, email, display_name, password_hash, password_salt, created_at) VALUES (?, ?, ?, ?, ?, ?)"
-  ).run(id, email, displayName, hash, salt, new Date().toISOString());
+  const { hash, salt } = await hashPassword(password);
+  const id = crypto.randomUUID();
+  await db
+    .prepare(
+      "INSERT INTO users (id, email, display_name, password_hash, password_salt, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+    )
+    .bind(id, email, displayName, hash, salt, new Date().toISOString())
+    .run();
 
   return { ok: true };
 }
@@ -55,13 +57,14 @@ export async function verifyCredentials(
   email: string,
   password: string
 ): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
-  const db = getDb();
-  const row = db
+  const db = await getDb();
+  const row = await db
     .prepare("SELECT id, email, display_name, password_hash, password_salt FROM users WHERE email = ?")
-    .get(email.trim().toLowerCase()) as UserRow | undefined;
+    .bind(email.trim().toLowerCase())
+    .first<UserRow>();
 
   if (!row) return { ok: false, error: "Invalid email or password." };
-  const valid = verifyPassword(password, row.password_salt, row.password_hash);
+  const valid = await verifyPassword(password, row.password_salt, row.password_hash);
   if (!valid) return { ok: false, error: "Invalid email or password." };
   return { ok: true, userId: row.id };
 }
@@ -87,16 +90,16 @@ export async function logInFormAction(formData: FormData): Promise<void> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
 
-  if (isRateLimited(email)) {
+  if (await isRateLimited(email)) {
     redirect(`/login?error=${encodeURIComponent("Too many failed attempts. Try again in a few minutes.")}`);
   }
 
   const verified = await verifyCredentials(email, password);
   if (!verified.ok) {
-    recordFailedAttempt(email);
+    await recordFailedAttempt(email);
     redirect(`/login?error=${encodeURIComponent(verified.error)}`);
   }
-  clearAttempts(email);
+  await clearAttempts(email);
   await createSession(verified.userId);
   redirect("/community");
 }

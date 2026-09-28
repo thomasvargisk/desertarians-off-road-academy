@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client";
 
@@ -24,13 +23,13 @@ export interface ForumReply {
 
 const POSTS_PER_PAGE = 20;
 
-export function listPosts(query?: string, page = 1): { posts: ForumPost[]; totalCount: number } {
-  const db = getDb();
+export async function listPosts(query?: string, page = 1): Promise<{ posts: ForumPost[]; totalCount: number }> {
+  const db = await getDb();
   const offset = (page - 1) * POSTS_PER_PAGE;
 
   if (query && query.trim()) {
     const like = `%${query.trim()}%`;
-    const posts = db
+    const { results: posts } = await db
       .prepare(
         `SELECT forum_posts.id as id, forum_posts.title as title, forum_posts.body as body,
                 forum_posts.created_at as createdAt, forum_posts.edited_at as editedAt,
@@ -41,16 +40,16 @@ export function listPosts(query?: string, page = 1): { posts: ForumPost[]; total
          ORDER BY forum_posts.created_at DESC
          LIMIT ? OFFSET ?`
       )
-      .all(like, like, POSTS_PER_PAGE, offset) as unknown as ForumPost[];
-    const totalCount = (
-      db
-        .prepare("SELECT COUNT(*) as c FROM forum_posts WHERE title LIKE ? OR body LIKE ?")
-        .get(like, like) as { c: number }
-    ).c;
-    return { posts, totalCount };
+      .bind(like, like, POSTS_PER_PAGE, offset)
+      .all<ForumPost>();
+    const countRow = await db
+      .prepare("SELECT COUNT(*) as c FROM forum_posts WHERE title LIKE ? OR body LIKE ?")
+      .bind(like, like)
+      .first<{ c: number }>();
+    return { posts, totalCount: countRow?.c ?? 0 };
   }
 
-  const posts = db
+  const { results: posts } = await db
     .prepare(
       `SELECT forum_posts.id as id, forum_posts.title as title, forum_posts.body as body,
               forum_posts.created_at as createdAt, forum_posts.edited_at as editedAt,
@@ -60,14 +59,15 @@ export function listPosts(query?: string, page = 1): { posts: ForumPost[]; total
        ORDER BY forum_posts.created_at DESC
        LIMIT ? OFFSET ?`
     )
-    .all(POSTS_PER_PAGE, offset) as unknown as ForumPost[];
-  const totalCount = (db.prepare("SELECT COUNT(*) as c FROM forum_posts").get() as { c: number }).c;
-  return { posts, totalCount };
+    .bind(POSTS_PER_PAGE, offset)
+    .all<ForumPost>();
+  const countRow = await db.prepare("SELECT COUNT(*) as c FROM forum_posts").first<{ c: number }>();
+  return { posts, totalCount: countRow?.c ?? 0 };
 }
 
-export function getPost(postId: string): ForumPost | null {
-  const db = getDb();
-  const row = db
+export async function getPost(postId: string): Promise<ForumPost | null> {
+  const db = await getDb();
+  const row = await db
     .prepare(
       `SELECT forum_posts.id as id, forum_posts.title as title, forum_posts.body as body,
               forum_posts.created_at as createdAt, forum_posts.edited_at as editedAt,
@@ -76,13 +76,14 @@ export function getPost(postId: string): ForumPost | null {
        FROM forum_posts JOIN users ON users.id = forum_posts.author_id
        WHERE forum_posts.id = ?`
     )
-    .get(postId) as unknown as ForumPost | undefined;
+    .bind(postId)
+    .first<ForumPost>();
   return row ?? null;
 }
 
-export function listReplies(postId: string): ForumReply[] {
-  const db = getDb();
-  return db
+export async function listReplies(postId: string): Promise<ForumReply[]> {
+  const db = await getDb();
+  const { results } = await db
     .prepare(
       `SELECT forum_replies.id as id, forum_replies.body as body, forum_replies.created_at as createdAt,
               forum_replies.edited_at as editedAt, forum_replies.author_id as authorId,
@@ -91,7 +92,9 @@ export function listReplies(postId: string): ForumReply[] {
        WHERE forum_replies.post_id = ?
        ORDER BY forum_replies.created_at ASC`
     )
-    .all(postId) as unknown as ForumReply[];
+    .bind(postId)
+    .all<ForumReply>();
+  return results;
 }
 
 export async function createPost(
@@ -104,14 +107,11 @@ export async function createPost(
   if (!title || !body) {
     return { ok: false, error: "Title and body are both required." };
   }
-  const db = getDb();
-  db.prepare("INSERT INTO forum_posts (id, author_id, title, body, created_at) VALUES (?, ?, ?, ?, ?)").run(
-    randomUUID(),
-    authorId,
-    title,
-    body,
-    new Date().toISOString()
-  );
+  const db = await getDb();
+  await db
+    .prepare("INSERT INTO forum_posts (id, author_id, title, body, created_at) VALUES (?, ?, ?, ?, ?)")
+    .bind(crypto.randomUUID(), authorId, title, body, new Date().toISOString())
+    .run();
   revalidatePath("/community");
   return { ok: true };
 }
@@ -122,23 +122,22 @@ export async function updatePost(
   formData: FormData
 ): Promise<{ ok: boolean; error?: string }> {
   "use server";
-  const db = getDb();
-  const post = db.prepare("SELECT author_id FROM forum_posts WHERE id = ?").get(postId) as
-    | { author_id: string }
-    | undefined;
+  const db = await getDb();
+  const post = await db
+    .prepare("SELECT author_id as authorId FROM forum_posts WHERE id = ?")
+    .bind(postId)
+    .first<{ authorId: string }>();
   if (!post) return { ok: false, error: "Post not found." };
-  if (post.author_id !== userId) return { ok: false, error: "Not authorized." };
+  if (post.authorId !== userId) return { ok: false, error: "Not authorized." };
 
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
   if (!title || !body) return { ok: false, error: "Title and body are both required." };
 
-  db.prepare("UPDATE forum_posts SET title = ?, body = ?, edited_at = ? WHERE id = ?").run(
-    title,
-    body,
-    new Date().toISOString(),
-    postId
-  );
+  await db
+    .prepare("UPDATE forum_posts SET title = ?, body = ?, edited_at = ? WHERE id = ?")
+    .bind(title, body, new Date().toISOString(), postId)
+    .run();
   revalidatePath(`/community/${postId}`);
   revalidatePath("/community");
   return { ok: true };
@@ -150,15 +149,16 @@ export async function deletePost(
   postId: string
 ): Promise<{ ok: boolean; error?: string }> {
   "use server";
-  const db = getDb();
-  const post = db.prepare("SELECT author_id FROM forum_posts WHERE id = ?").get(postId) as
-    | { author_id: string }
-    | undefined;
+  const db = await getDb();
+  const post = await db
+    .prepare("SELECT author_id as authorId FROM forum_posts WHERE id = ?")
+    .bind(postId)
+    .first<{ authorId: string }>();
   if (!post) return { ok: false, error: "Post not found." };
-  if (post.author_id !== userId && !isAdmin) return { ok: false, error: "Not authorized." };
+  if (post.authorId !== userId && !isAdmin) return { ok: false, error: "Not authorized." };
 
-  db.prepare("DELETE FROM forum_replies WHERE post_id = ?").run(postId);
-  db.prepare("DELETE FROM forum_posts WHERE id = ?").run(postId);
+  await db.prepare("DELETE FROM forum_replies WHERE post_id = ?").bind(postId).run();
+  await db.prepare("DELETE FROM forum_posts WHERE id = ?").bind(postId).run();
   revalidatePath("/community");
   return { ok: true };
 }
@@ -173,14 +173,11 @@ export async function createReply(
   if (!body) {
     return { ok: false, error: "Reply cannot be empty." };
   }
-  const db = getDb();
-  db.prepare("INSERT INTO forum_replies (id, post_id, author_id, body, created_at) VALUES (?, ?, ?, ?, ?)").run(
-    randomUUID(),
-    postId,
-    authorId,
-    body,
-    new Date().toISOString()
-  );
+  const db = await getDb();
+  await db
+    .prepare("INSERT INTO forum_replies (id, post_id, author_id, body, created_at) VALUES (?, ?, ?, ?, ?)")
+    .bind(crypto.randomUUID(), postId, authorId, body, new Date().toISOString())
+    .run();
   revalidatePath(`/community/${postId}`);
   return { ok: true };
 }
@@ -191,22 +188,22 @@ export async function updateReply(
   formData: FormData
 ): Promise<{ ok: boolean; error?: string }> {
   "use server";
-  const db = getDb();
-  const reply = db.prepare("SELECT author_id, post_id FROM forum_replies WHERE id = ?").get(replyId) as
-    | { author_id: string; post_id: string }
-    | undefined;
+  const db = await getDb();
+  const reply = await db
+    .prepare("SELECT author_id as authorId, post_id as postId FROM forum_replies WHERE id = ?")
+    .bind(replyId)
+    .first<{ authorId: string; postId: string }>();
   if (!reply) return { ok: false, error: "Reply not found." };
-  if (reply.author_id !== userId) return { ok: false, error: "Not authorized." };
+  if (reply.authorId !== userId) return { ok: false, error: "Not authorized." };
 
   const body = String(formData.get("body") ?? "").trim();
   if (!body) return { ok: false, error: "Reply cannot be empty." };
 
-  db.prepare("UPDATE forum_replies SET body = ?, edited_at = ? WHERE id = ?").run(
-    body,
-    new Date().toISOString(),
-    replyId
-  );
-  revalidatePath(`/community/${reply.post_id}`);
+  await db
+    .prepare("UPDATE forum_replies SET body = ?, edited_at = ? WHERE id = ?")
+    .bind(body, new Date().toISOString(), replyId)
+    .run();
+  revalidatePath(`/community/${reply.postId}`);
   return { ok: true };
 }
 
@@ -216,14 +213,15 @@ export async function deleteReply(
   replyId: string
 ): Promise<{ ok: boolean; error?: string }> {
   "use server";
-  const db = getDb();
-  const reply = db.prepare("SELECT author_id, post_id FROM forum_replies WHERE id = ?").get(replyId) as
-    | { author_id: string; post_id: string }
-    | undefined;
+  const db = await getDb();
+  const reply = await db
+    .prepare("SELECT author_id as authorId, post_id as postId FROM forum_replies WHERE id = ?")
+    .bind(replyId)
+    .first<{ authorId: string; postId: string }>();
   if (!reply) return { ok: false, error: "Reply not found." };
-  if (reply.author_id !== userId && !isAdmin) return { ok: false, error: "Not authorized." };
+  if (reply.authorId !== userId && !isAdmin) return { ok: false, error: "Not authorized." };
 
-  db.prepare("DELETE FROM forum_replies WHERE id = ?").run(replyId);
-  revalidatePath(`/community/${reply.post_id}`);
+  await db.prepare("DELETE FROM forum_replies WHERE id = ?").bind(replyId).run();
+  revalidatePath(`/community/${reply.postId}`);
   return { ok: true };
 }

@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { listTrips } from "@/lib/camping/actions";
 
-export default function CampingPage() {
-  const trips = listTrips();
+export default async function CampingPage() {
+  const trips = await listTrips();
 
   return (
     <section className="min-h-screen bg-desert-bg text-desert-fg">

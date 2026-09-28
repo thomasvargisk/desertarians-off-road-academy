@@ -1,29 +1,8 @@
 import Link from "next/link";
-import { getDb } from "@/lib/db/client";
+import { listDrives } from "@/lib/drives/actions";
 
-interface DriveRow {
-  id: string;
-  title: string;
-  description: string;
-  difficulty: string;
-  drive_date: string;
-  public_area: string;
-  capacity: number;
-  rsvp_count: number;
-}
-
-function getDrives(): DriveRow[] {
-  const db = getDb();
-  return db
-    .prepare(
-      `SELECT drives.*, (SELECT COUNT(*) FROM drive_rsvps WHERE drive_rsvps.drive_id = drives.id) as rsvp_count
-       FROM drives ORDER BY drive_date ASC`
-    )
-    .all() as unknown as DriveRow[];
-}
-
-export default function DrivesPage() {
-  const drives = getDrives();
+export default async function DrivesPage() {
+  const drives = await listDrives();
 
   return (
     <section className="min-h-screen bg-desert-bg text-desert-fg">

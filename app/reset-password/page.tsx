@@ -21,7 +21,7 @@ export default async function ResetPasswordPage({
   async function resetAction(formData: FormData) {
     "use server";
     const newPassword = String(formData.get("newPassword") ?? "");
-    const result = resetPassword(token!, newPassword);
+    const result = await resetPassword(token!, newPassword);
     if (!result.ok) {
       redirect(`/reset-password?token=${token}&error=${encodeURIComponent(result.error ?? "Reset failed.")}`);
     }

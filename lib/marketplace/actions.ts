@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client";
 
@@ -14,9 +13,9 @@ export interface MarketplaceListing {
   sellerName: string;
 }
 
-export function listListings(): MarketplaceListing[] {
-  const db = getDb();
-  return db
+export async function listListings(): Promise<MarketplaceListing[]> {
+  const db = await getDb();
+  const { results } = await db
     .prepare(
       `SELECT marketplace_listings.id as id, marketplace_listings.title as title,
               marketplace_listings.description as description, marketplace_listings.price_aed as price_aed,
@@ -27,12 +26,13 @@ export function listListings(): MarketplaceListing[] {
        WHERE marketplace_listings.status = 'active'
        ORDER BY marketplace_listings.created_at DESC`
     )
-    .all() as unknown as MarketplaceListing[];
+    .all<MarketplaceListing>();
+  return results;
 }
 
-export function getListing(listingId: string): MarketplaceListing | null {
-  const db = getDb();
-  const row = db
+export async function getListing(listingId: string): Promise<MarketplaceListing | null> {
+  const db = await getDb();
+  const row = await db
     .prepare(
       `SELECT marketplace_listings.id as id, marketplace_listings.title as title,
               marketplace_listings.description as description, marketplace_listings.price_aed as price_aed,
@@ -42,7 +42,8 @@ export function getListing(listingId: string): MarketplaceListing | null {
        FROM marketplace_listings JOIN users ON users.id = marketplace_listings.seller_id
        WHERE marketplace_listings.id = ?`
     )
-    .get(listingId) as unknown as MarketplaceListing | undefined;
+    .bind(listingId)
+    .first<MarketplaceListing>();
   return row ?? null;
 }
 
@@ -61,10 +62,13 @@ export async function createListing(sellerId: string, formData: FormData): Promi
     return { ok: false, error: "Price must be a valid non-negative number." };
   }
 
-  const db = getDb();
-  db.prepare(
-    "INSERT INTO marketplace_listings (id, seller_id, title, description, price_aed, category, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'active', ?)"
-  ).run(randomUUID(), sellerId, title, description, price, category, new Date().toISOString());
+  const db = await getDb();
+  await db
+    .prepare(
+      "INSERT INTO marketplace_listings (id, seller_id, title, description, price_aed, category, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'active', ?)"
+    )
+    .bind(crypto.randomUUID(), sellerId, title, description, price, category, new Date().toISOString())
+    .run();
   revalidatePath("/marketplace");
   return { ok: true };
 }
@@ -75,15 +79,16 @@ export async function deleteListing(
   listingId: string
 ): Promise<{ ok: boolean; error?: string }> {
   "use server";
-  const db = getDb();
-  const listing = db.prepare("SELECT seller_id FROM marketplace_listings WHERE id = ?").get(listingId) as
-    | { seller_id: string }
-    | undefined;
+  const db = await getDb();
+  const listing = await db
+    .prepare("SELECT seller_id as sellerId FROM marketplace_listings WHERE id = ?")
+    .bind(listingId)
+    .first<{ sellerId: string }>();
   if (!listing) return { ok: false, error: "Listing not found." };
-  if (listing.seller_id !== userId && !isAdmin) {
+  if (listing.sellerId !== userId && !isAdmin) {
     return { ok: false, error: "Not authorized." };
   }
-  db.prepare("UPDATE marketplace_listings SET status = 'removed' WHERE id = ?").run(listingId);
+  await db.prepare("UPDATE marketplace_listings SET status = 'removed' WHERE id = ?").bind(listingId).run();
   revalidatePath("/marketplace");
   revalidatePath(`/marketplace/${listingId}`);
   return { ok: true };

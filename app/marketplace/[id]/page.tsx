@@ -5,7 +5,7 @@ import { getListing, deleteListing } from "@/lib/marketplace/actions";
 
 export default async function ListingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const listing = getListing(id);
+  const listing = await getListing(id);
   if (!listing || listing.status !== "active") notFound();
 
   const user = await getCurrentUser();

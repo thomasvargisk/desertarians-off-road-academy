@@ -1,17 +1,14 @@
-import { DatabaseSync } from "node:sqlite";
-import path from "node:path";
+import { execSync } from "node:child_process";
 
 const email = process.argv[2];
+const remote = process.argv.includes("--remote");
+
 if (!email) {
-  console.error("Usage: npm run set-admin -- <email>");
+  console.error("Usage: npm run set-admin -- <email> [--remote]");
   process.exit(1);
 }
 
-const db = new DatabaseSync(path.join(process.cwd(), "data", "desertarians.db"));
-const result = db.prepare("UPDATE users SET is_admin = 1 WHERE email = ?").run(email.trim().toLowerCase());
+const sql = `UPDATE users SET is_admin = 1 WHERE email = '${email.trim().toLowerCase().replace(/'/g, "''")}';`;
+const target = remote ? "--remote" : "--local";
 
-if (result.changes === 0) {
-  console.error(`No account found for ${email}`);
-  process.exit(1);
-}
-console.log(`${email} is now an admin.`);
+execSync(`npx wrangler d1 execute desertarians-db ${target} --command "${sql}"`, { stdio: "inherit" });

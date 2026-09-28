@@ -1,7 +1,5 @@
-import { writeFile, mkdir } from "node:fs/promises";
-import path from "node:path";
 import { revalidatePath } from "next/cache";
-import { getDb } from "@/lib/db/client";
+import { getDb, getAvatarBucket } from "@/lib/db/client";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 
 export interface ActionResult {
@@ -19,8 +17,8 @@ export async function updateProfile(userId: string, formData: FormData): Promise
   if (!displayName) {
     return { ok: false, error: "Display name cannot be empty." };
   }
-  const db = getDb();
-  db.prepare("UPDATE users SET display_name = ?, bio = ? WHERE id = ?").run(displayName, bio, userId);
+  const db = await getDb();
+  await db.prepare("UPDATE users SET display_name = ?, bio = ? WHERE id = ?").bind(displayName, bio, userId).run();
   revalidatePath("/settings");
   revalidatePath(`/members/${userId}`);
   return { ok: true };
@@ -34,17 +32,18 @@ export async function changePassword(userId: string, formData: FormData): Promis
     return { ok: false, error: "New password must be at least 8 characters." };
   }
 
-  const db = getDb();
-  const row = db.prepare("SELECT password_hash, password_salt FROM users WHERE id = ?").get(userId) as unknown as
-    | { password_hash: string; password_salt: string }
-    | undefined;
+  const db = await getDb();
+  const row = await db
+    .prepare("SELECT password_hash, password_salt FROM users WHERE id = ?")
+    .bind(userId)
+    .first<{ password_hash: string; password_salt: string }>();
   if (!row) return { ok: false, error: "Account not found." };
 
-  const valid = verifyPassword(currentPassword, row.password_salt, row.password_hash);
+  const valid = await verifyPassword(currentPassword, row.password_salt, row.password_hash);
   if (!valid) return { ok: false, error: "Current password is incorrect." };
 
-  const { hash, salt } = hashPassword(newPassword);
-  db.prepare("UPDATE users SET password_hash = ?, password_salt = ? WHERE id = ?").run(hash, salt, userId);
+  const { hash, salt } = await hashPassword(newPassword);
+  await db.prepare("UPDATE users SET password_hash = ?, password_salt = ? WHERE id = ?").bind(hash, salt, userId).run();
   revalidatePath("/settings");
   return { ok: true };
 }
@@ -63,14 +62,12 @@ export async function updateAvatar(userId: string, formData: FormData): Promise<
   }
 
   const extension = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
-  const fileName = `${userId}.${extension}`;
-  const uploadsDir = path.join(process.cwd(), "public", "uploads", "avatars");
-  await mkdir(uploadsDir, { recursive: true });
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(uploadsDir, fileName), buffer);
+  const key = `${userId}.${extension}`;
+  const bucket = await getAvatarBucket();
+  await bucket.put(key, await file.arrayBuffer(), { httpMetadata: { contentType: file.type } });
 
-  const db = getDb();
-  db.prepare("UPDATE users SET avatar_path = ? WHERE id = ?").run(`/uploads/avatars/${fileName}`, userId);
+  const db = await getDb();
+  await db.prepare("UPDATE users SET avatar_path = ? WHERE id = ?").bind(`/api/avatars/${key}`, userId).run();
   revalidatePath("/settings");
   revalidatePath(`/members/${userId}`);
   return { ok: true };

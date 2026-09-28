@@ -24,12 +24,11 @@ Thumbs.db
 tmp/
 .cache/
 
-# Runtime data
-data/*.db
-public/uploads/
-
-.vinext/
+# Cloudflare / OpenNext
+.open-next/
 .wrangler/
+.dev.vars
+.vinext/
 
 # Internal agent briefs, dispatch records, and review working papers
 AGENTS.md

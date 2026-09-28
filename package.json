@@ -12,6 +12,11 @@
     "typecheck": "tsc --noEmit",
     "build": "next build",
     "start": "next start",
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:preview": "opennextjs-cloudflare build && wrangler dev",
+    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "db:migrate:local": "wrangler d1 migrations apply desertarians-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply desertarians-db --remote",
     "set-admin": "node scripts/set-admin.mjs"
   },
   "keywords": [],
@@ -24,7 +29,9 @@
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260927.1",
     "@eslint/js": "^9.39.4",
+    "@opennextjs/cloudflare": "^1.20.6",
     "@types/node": "^24.10.20",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
@@ -33,6 +40,7 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.57.2",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "wrangler": "^4.142.0"
   }
 }

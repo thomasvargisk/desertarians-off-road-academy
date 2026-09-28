@@ -1,0 +1,25 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"main": ".open-next/worker.js",
+	"name": "desertarians-off-road-academy",
+	"account_id": "caed1c987fa0a4ef0af7896f4b59894b",
+	"compatibility_date": "2024-09-23",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "desertarians-db",
+			"database_id": "4409e15d-e7df-4789-8e33-c33f11d93cf9"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "AVATARS",
+			"bucket_name": "desertarians-avatars"
+		}
+	]
+}

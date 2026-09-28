@@ -15,6 +15,7 @@ const eslintConfig = [
     },
     rules: {
       ...ts.configs.recommended[2].rules,
+      "no-undef": "off",
     },
   },
   next[0],

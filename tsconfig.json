@@ -27,7 +27,8 @@
     },
     "types": [
       "node",
-      "vitest"
+      "vitest",
+      "@cloudflare/workers-types"
     ],
     "allowJs": true,
     "noEmit": true,
@@ -39,6 +40,7 @@
     ]
   },
   "include": [
+    "*.d.ts",
     "app/**/*.ts",
     "app/**/*.tsx",
     "components/**/*.ts",

@@ -4,7 +4,7 @@ import { getProfile } from "@/lib/members/actions";
 
 export default async function MemberProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const profile = getProfile(id);
+  const profile = await getProfile(id);
   if (!profile) notFound();
 
   return (

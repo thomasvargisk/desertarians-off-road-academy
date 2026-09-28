@@ -4,7 +4,7 @@ import { getPost, updatePost } from "@/lib/forum/actions";
 
 export default async function EditPostPage({ params }: { params: Promise<{ postId: string }> }) {
   const { postId } = await params;
-  const post = getPost(postId);
+  const post = await getPost(postId);
   if (!post) notFound();
 
   const user = await getCurrentUser();

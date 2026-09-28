@@ -4,7 +4,7 @@ import { listListings, createListing } from "@/lib/marketplace/actions";
 
 export default async function MarketplacePage() {
   const user = await getCurrentUser();
-  const listings = listListings();
+  const listings = await listListings();
 
   async function createListingAction(formData: FormData) {
     "use server";
