@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { getPost, updatePost } from "@/lib/forum/actions";
+import { getPost, updatePost, FORUM_CATEGORIES } from "@/lib/forum/actions";
 
 export default async function EditPostPage({ params }: { params: Promise<{ postId: string }> }) {
   const { postId } = await params;
@@ -37,6 +37,17 @@ export default async function EditPostPage({ params }: { params: Promise<{ postI
             rows={6}
             className="w-full rounded-md bg-desert-bg border border-desert-border px-3 py-2 text-desert-fg"
           />
+          <select
+            name="category"
+            defaultValue={post.category}
+            className="w-full rounded-md bg-desert-bg border border-desert-border px-3 py-2 text-desert-fg"
+          >
+            {FORUM_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
           <button
             type="submit"
             className="font-display font-medium bg-desert-accent text-desert-dark rounded-lg px-5 py-2"

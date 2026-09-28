@@ -1,16 +1,16 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/session";
-import { listPosts, createPost } from "@/lib/forum/actions";
+import { listPosts, createPost, FORUM_CATEGORIES } from "@/lib/forum/actions";
 
 export default async function CommunityPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; category?: string }>;
 }) {
-  const { q, page: pageParam } = await searchParams;
+  const { q, page: pageParam, category } = await searchParams;
   const page = Math.max(1, Number(pageParam) || 1);
   const user = await getCurrentUser();
-  const { posts, totalCount } = await listPosts(q, page);
+  const { posts, totalCount } = await listPosts(q, page, category);
   const totalPages = Math.max(1, Math.ceil(totalCount / 20));
 
   async function createPostAction(formData: FormData) {
@@ -40,6 +40,30 @@ export default async function CommunityPage({
           </button>
         </form>
 
+        <nav className="mb-6 flex flex-wrap gap-2 text-sm">
+          <Link
+            href="/community"
+            className={`rounded-md border px-3 py-1 ${
+              !category || category === "All"
+                ? "border-desert-accent text-desert-accent"
+                : "border-desert-border text-desert-muted"
+            }`}
+          >
+            All
+          </Link>
+          {FORUM_CATEGORIES.map((c) => (
+            <a
+              key={c}
+              href={`/community?category=${encodeURIComponent(c)}`}
+              className={`rounded-md border px-3 py-1 ${
+                category === c ? "border-desert-accent text-desert-accent" : "border-desert-border text-desert-muted"
+              }`}
+            >
+              {c}
+            </a>
+          ))}
+        </nav>
+
         {user ? (
           <form
             action={createPostAction}
@@ -59,6 +83,17 @@ export default async function CommunityPage({
               rows={3}
               className="w-full rounded-md bg-desert-bg border border-desert-border px-3 py-2 text-desert-fg"
             />
+            <select
+              name="category"
+              defaultValue="General Discussions"
+              className="w-full rounded-md bg-desert-bg border border-desert-border px-3 py-2 text-desert-fg"
+            >
+              {FORUM_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
             <button
               type="submit"
               className="font-display font-medium bg-desert-accent text-desert-dark rounded-lg px-5 py-2"
@@ -91,11 +126,17 @@ export default async function CommunityPage({
               href={`/community/${post.id}`}
               className="block bg-desert-card border border-desert-border rounded-lg p-5 hover:border-desert-accent transition-colors"
             >
-              <h3 className="font-display font-semibold text-lg">{post.title}</h3>
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-display font-semibold text-lg">{post.title}</h3>
+                <span className="text-xs px-2 py-0.5 rounded bg-desert-bg border border-desert-border text-desert-muted">
+                  {post.category}
+                </span>
+              </div>
               <p className="text-desert-muted text-sm mt-1 line-clamp-2">{post.body}</p>
               <p className="text-xs text-desert-muted mt-3">
                 {post.authorName} &middot; {new Date(post.createdAt).toLocaleDateString()} &middot; {post.replyCount}{" "}
-                {post.replyCount === 1 ? "reply" : "replies"}
+                {post.replyCount === 1 ? "reply" : "replies"} &middot; {post.viewCount}{" "}
+                {post.viewCount === 1 ? "view" : "views"}
                 {post.editedAt && " · edited"}
               </p>
             </Link>
@@ -107,7 +148,9 @@ export default async function CommunityPage({
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
               <a
                 key={p}
-                href={`/community?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`}
+                href={`/community?${q ? `q=${encodeURIComponent(q)}&` : ""}${
+                  category ? `category=${encodeURIComponent(category)}&` : ""
+                }page=${p}`}
                 className={`rounded-md border px-3 py-1 ${
                   p === page ? "border-desert-accent text-desert-accent" : "border-desert-border text-desert-muted"
                 }`}

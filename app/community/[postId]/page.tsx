@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { getPost, listReplies, createReply, deletePost, deleteReply } from "@/lib/forum/actions";
+import { getPost, listReplies, createReply, deletePost, deleteReply, incrementViewCount } from "@/lib/forum/actions";
 
 export default async function PostPage({ params }: { params: Promise<{ postId: string }> }) {
   const { postId } = await params;
   const post = await getPost(postId);
   if (!post) notFound();
+  await incrementViewCount(postId);
 
   const user = await getCurrentUser();
   const replies = await listReplies(postId);
@@ -30,7 +31,12 @@ export default async function PostPage({ params }: { params: Promise<{ postId: s
       <main className="max-w-3xl mx-auto p-4 md:p-6">
         <article className="bg-desert-card border border-desert-border rounded-lg p-6 mb-6">
           <div className="flex items-start justify-between gap-4">
-            <h2 className="font-display font-bold text-2xl mb-2">{post.title}</h2>
+            <div className="flex items-center gap-2 mb-2">
+              <h2 className="font-display font-bold text-2xl">{post.title}</h2>
+              <span className="text-xs px-2 py-0.5 rounded bg-desert-bg border border-desert-border text-desert-muted">
+                {post.category}
+              </span>
+            </div>
             {canManagePost && (
               <div className="flex gap-2 shrink-0">
                 <Link
@@ -52,7 +58,8 @@ export default async function PostPage({ params }: { params: Promise<{ postId: s
             <Link href={`/members/${post.authorId}`} className="hover:text-desert-accent">
               {post.authorName}
             </Link>{" "}
-            &middot; {new Date(post.createdAt).toLocaleDateString()}
+            &middot; {new Date(post.createdAt).toLocaleDateString()} &middot; {post.viewCount}{" "}
+            {post.viewCount === 1 ? "view" : "views"}
             {post.editedAt && " · edited"}
           </p>
         </article>

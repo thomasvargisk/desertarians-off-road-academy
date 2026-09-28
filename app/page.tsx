@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { getCommunityStats } from "@/lib/stats/actions";
 
 const drives = [
   { day: "FR", date: "02", title: "Newbie Desert Drive", level: "Newbie", area: "Dubai desert area", time: "6:00 AM" },
@@ -16,7 +17,8 @@ const discussions = [
 
 const academyLevels = ["Newbie", "Fewbie", "Fewbie Plus", "Intermediate", "Advanced", "Marshal"];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const stats = await getCommunityStats();
   return <div>
     <section className="border-b border-desert-border bg-[#061a3c] text-white">
       <div className="mx-auto grid max-w-7xl items-center gap-8 px-5 py-10 md:grid-cols-[1fr_420px] md:py-14">
@@ -34,7 +36,7 @@ export default function HomePage() {
       <aside className="space-y-6">
         <section className="community-card"><div className="card-heading">Club announcements</div><div className="space-y-4 p-5"><article><a href="#review" className="font-bold">Welcome to the Desertarians website review</a><p className="mt-1 text-sm text-desert-muted">Help us shape the club’s new digital home.</p></article><article><Link href="/academy" className="font-bold">Academy safety charter</Link><p className="mt-1 text-sm text-desert-muted">How we prepare, communicate and look after one another.</p></article></div></section>
         <section className="community-card"><div className="card-heading">Member spotlight</div><div className="p-5 text-center"><div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-[#082b59] to-amber-500 text-2xl font-bold text-white">D</div><h3 className="mt-4 font-bold">The Desertarians community</h3><p className="mt-2 text-sm leading-6 text-desert-muted">Different vehicles, backgrounds and experience levels—one shared respect for the desert.</p></div></section>
-        <section className="community-card"><div className="card-heading">Community at a glance</div><dl className="grid grid-cols-2 gap-px bg-desert-border"><div className="bg-desert-card p-4 text-center"><dt className="text-xs text-desert-muted">Academy levels</dt><dd className="mt-1 text-2xl font-bold">6</dd></div><div className="bg-desert-card p-4 text-center"><dt className="text-xs text-desert-muted">Core activities</dt><dd className="mt-1 text-2xl font-bold">3</dd></div><div className="bg-desert-card p-4 text-center"><dt className="text-xs text-desert-muted">Safety first</dt><dd className="mt-1 text-xl font-bold">Always</dd></div><div className="bg-desert-card p-4 text-center"><dt className="text-xs text-desert-muted">UAE based</dt><dd className="mt-1 text-xl font-bold">DORA</dd></div></dl></section>
+        <section className="community-card"><div className="card-heading">Community at a glance</div><dl className="grid grid-cols-2 gap-px bg-desert-border"><div className="bg-desert-card p-4 text-center"><dt className="text-xs text-desert-muted">Total members</dt><dd className="mt-1 text-2xl font-bold">{stats.totalMembers}</dd></div><div className="bg-desert-card p-4 text-center"><dt className="text-xs text-desert-muted">Club drives</dt><dd className="mt-1 text-2xl font-bold">{stats.totalDrives}</dd></div><div className="bg-desert-card p-4 text-center"><dt className="text-xs text-desert-muted">Forum posts</dt><dd className="mt-1 text-2xl font-bold">{stats.totalForumPosts}</dd></div><div className="bg-desert-card p-4 text-center"><dt className="text-xs text-desert-muted">Marketplace listings</dt><dd className="mt-1 text-2xl font-bold">{stats.totalMarketplaceListings}</dd></div></dl></section>
       </aside>
     </div>
     <section className="bg-[#082b59] px-5 py-12 text-white"><div className="mx-auto max-w-7xl"><p className="section-kicker text-amber-300">More than a drive</p><h2 className="text-3xl font-bold">Learn together. Camp together. Explore responsibly.</h2><div className="mt-7 grid gap-4 md:grid-cols-3"><Link href="/academy" className="feature-link"><strong>Off-road academy</strong><span>Skills, progression and guidance →</span></Link><Link href="/camping" className="feature-link"><strong>Camping group</strong><span>Campouts, equipment and community →</span></Link><Link href="/drives" className="feature-link"><strong>Club drives</strong><span>Upcoming experiences and levels →</span></Link></div></div></section>

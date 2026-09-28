@@ -1,6 +1,14 @@
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client";
 
+export const FORUM_CATEGORIES = [
+  "Announcements",
+  "General Discussions",
+  "Off-road Advice",
+  "Vehicle Garage",
+  "Trip Reports",
+] as const;
+
 export interface ForumPost {
   id: string;
   title: string;
@@ -10,6 +18,8 @@ export interface ForumPost {
   authorId: string;
   authorName: string;
   replyCount: number;
+  category: string;
+  viewCount: number;
 }
 
 export interface ForumReply {
@@ -23,45 +33,46 @@ export interface ForumReply {
 
 const POSTS_PER_PAGE = 20;
 
-export async function listPosts(query?: string, page = 1): Promise<{ posts: ForumPost[]; totalCount: number }> {
+export async function listPosts(
+  query?: string,
+  page = 1,
+  category?: string
+): Promise<{ posts: ForumPost[]; totalCount: number }> {
   const db = await getDb();
   const offset = (page - 1) * POSTS_PER_PAGE;
 
+  const conditions: string[] = [];
+  const params: (string | number)[] = [];
+
   if (query && query.trim()) {
     const like = `%${query.trim()}%`;
-    const { results: posts } = await db
-      .prepare(
-        `SELECT forum_posts.id as id, forum_posts.title as title, forum_posts.body as body,
-                forum_posts.created_at as createdAt, forum_posts.edited_at as editedAt,
-                forum_posts.author_id as authorId, users.display_name as authorName,
-                (SELECT COUNT(*) FROM forum_replies WHERE forum_replies.post_id = forum_posts.id) as replyCount
-         FROM forum_posts JOIN users ON users.id = forum_posts.author_id
-         WHERE forum_posts.title LIKE ? OR forum_posts.body LIKE ?
-         ORDER BY forum_posts.created_at DESC
-         LIMIT ? OFFSET ?`
-      )
-      .bind(like, like, POSTS_PER_PAGE, offset)
-      .all<ForumPost>();
-    const countRow = await db
-      .prepare("SELECT COUNT(*) as c FROM forum_posts WHERE title LIKE ? OR body LIKE ?")
-      .bind(like, like)
-      .first<{ c: number }>();
-    return { posts, totalCount: countRow?.c ?? 0 };
+    conditions.push("(forum_posts.title LIKE ? OR forum_posts.body LIKE ?)");
+    params.push(like, like);
   }
+  if (category && category !== "All") {
+    conditions.push("forum_posts.category = ?");
+    params.push(category);
+  }
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
   const { results: posts } = await db
     .prepare(
       `SELECT forum_posts.id as id, forum_posts.title as title, forum_posts.body as body,
               forum_posts.created_at as createdAt, forum_posts.edited_at as editedAt,
+              forum_posts.category as category, forum_posts.view_count as viewCount,
               forum_posts.author_id as authorId, users.display_name as authorName,
               (SELECT COUNT(*) FROM forum_replies WHERE forum_replies.post_id = forum_posts.id) as replyCount
        FROM forum_posts JOIN users ON users.id = forum_posts.author_id
+       ${whereClause}
        ORDER BY forum_posts.created_at DESC
        LIMIT ? OFFSET ?`
     )
-    .bind(POSTS_PER_PAGE, offset)
+    .bind(...params, POSTS_PER_PAGE, offset)
     .all<ForumPost>();
-  const countRow = await db.prepare("SELECT COUNT(*) as c FROM forum_posts").first<{ c: number }>();
+  const countRow = await db
+    .prepare(`SELECT COUNT(*) as c FROM forum_posts ${whereClause}`)
+    .bind(...params)
+    .first<{ c: number }>();
   return { posts, totalCount: countRow?.c ?? 0 };
 }
 
@@ -71,6 +82,7 @@ export async function getPost(postId: string): Promise<ForumPost | null> {
     .prepare(
       `SELECT forum_posts.id as id, forum_posts.title as title, forum_posts.body as body,
               forum_posts.created_at as createdAt, forum_posts.edited_at as editedAt,
+              forum_posts.category as category, forum_posts.view_count as viewCount,
               forum_posts.author_id as authorId, users.display_name as authorName,
               (SELECT COUNT(*) FROM forum_replies WHERE forum_replies.post_id = forum_posts.id) as replyCount
        FROM forum_posts JOIN users ON users.id = forum_posts.author_id
@@ -104,16 +116,23 @@ export async function createPost(
   "use server";
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
+  const category = String(formData.get("category") ?? "").trim() || "General Discussions";
   if (!title || !body) {
     return { ok: false, error: "Title and body are both required." };
   }
   const db = await getDb();
   await db
-    .prepare("INSERT INTO forum_posts (id, author_id, title, body, created_at) VALUES (?, ?, ?, ?, ?)")
-    .bind(crypto.randomUUID(), authorId, title, body, new Date().toISOString())
+    .prepare("INSERT INTO forum_posts (id, author_id, title, body, category, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(crypto.randomUUID(), authorId, title, body, category, new Date().toISOString())
     .run();
   revalidatePath("/community");
   return { ok: true };
+}
+
+export async function incrementViewCount(postId: string): Promise<void> {
+  "use server";
+  const db = await getDb();
+  await db.prepare("UPDATE forum_posts SET view_count = view_count + 1 WHERE id = ?").bind(postId).run();
 }
 
 export async function updatePost(
@@ -132,11 +151,12 @@ export async function updatePost(
 
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
+  const category = String(formData.get("category") ?? "").trim() || "General Discussions";
   if (!title || !body) return { ok: false, error: "Title and body are both required." };
 
   await db
-    .prepare("UPDATE forum_posts SET title = ?, body = ?, edited_at = ? WHERE id = ?")
-    .bind(title, body, new Date().toISOString(), postId)
+    .prepare("UPDATE forum_posts SET title = ?, body = ?, category = ?, edited_at = ? WHERE id = ?")
+    .bind(title, body, category, new Date().toISOString(), postId)
     .run();
   revalidatePath(`/community/${postId}`);
   revalidatePath("/community");
