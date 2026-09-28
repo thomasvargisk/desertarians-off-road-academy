@@ -2,7 +2,9 @@ import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getCourse, hasUserEnrolled, enrollInCourse } from "@/lib/academy/actions";
 import { createComment, deleteComment } from "@/lib/comments/actions";
+import { uploadMedia, deleteMedia } from "@/lib/media/actions";
 import { CommentSection } from "@/components/comment-section";
+import { MediaGallery } from "@/components/media-gallery";
 
 export default async function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -30,6 +32,20 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
       "use server";
       if (!user) return;
       await deleteComment(user.id, user.isAdmin, commentId, `/academy/${id}`);
+    };
+  }
+
+  async function uploadMediaAction(formData: FormData) {
+    "use server";
+    if (!user) return;
+    await uploadMedia(user.id, "academy", id, formData, `/academy/${id}`);
+  }
+
+  function deleteMediaAction(mediaId: string) {
+    return async () => {
+      "use server";
+      if (!user) return;
+      await deleteMedia(user.id, user.isAdmin, mediaId, `/academy/${id}`);
     };
   }
 
@@ -78,6 +94,14 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
           user={user}
           addAction={addCommentAction}
           deleteAction={deleteCommentAction}
+        />
+
+        <MediaGallery
+          entityType="academy"
+          entityId={id}
+          user={user}
+          uploadAction={uploadMediaAction}
+          deleteAction={deleteMediaAction}
         />
       </main>
     </section>

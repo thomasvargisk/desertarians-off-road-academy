@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getListing, deleteListing } from "@/lib/marketplace/actions";
+import { uploadMedia, deleteMedia } from "@/lib/media/actions";
+import { MediaGallery } from "@/components/media-gallery";
 
 export default async function ListingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -16,6 +18,20 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
     if (!user) return;
     await deleteListing(user.id, user.isAdmin, id);
     redirect("/marketplace");
+  }
+
+  async function uploadMediaAction(formData: FormData) {
+    "use server";
+    if (!user) return;
+    await uploadMedia(user.id, "marketplace", id, formData, `/marketplace/${id}`);
+  }
+
+  function deleteMediaAction(mediaId: string) {
+    return async () => {
+      "use server";
+      if (!user) return;
+      await deleteMedia(user.id, user.isAdmin, mediaId, `/marketplace/${id}`);
+    };
   }
 
   return (
@@ -44,6 +60,14 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
             </form>
           )}
         </div>
+
+        <MediaGallery
+          entityType="marketplace"
+          entityId={id}
+          user={user}
+          uploadAction={uploadMediaAction}
+          deleteAction={deleteMediaAction}
+        />
       </main>
     </section>
   );

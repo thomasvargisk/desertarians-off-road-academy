@@ -47,7 +47,10 @@ export async function getListing(listingId: string): Promise<MarketplaceListing 
   return row ?? null;
 }
 
-export async function createListing(sellerId: string, formData: FormData): Promise<{ ok: boolean; error?: string }> {
+export async function createListing(
+  sellerId: string,
+  formData: FormData
+): Promise<{ ok: boolean; error?: string; id?: string }> {
   "use server";
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
@@ -62,15 +65,16 @@ export async function createListing(sellerId: string, formData: FormData): Promi
     return { ok: false, error: "Price must be a valid non-negative number." };
   }
 
+  const id = crypto.randomUUID();
   const db = await getDb();
   await db
     .prepare(
       "INSERT INTO marketplace_listings (id, seller_id, title, description, price_aed, category, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'active', ?)"
     )
-    .bind(crypto.randomUUID(), sellerId, title, description, price, category, new Date().toISOString())
+    .bind(id, sellerId, title, description, price, category, new Date().toISOString())
     .run();
   revalidatePath("/marketplace");
-  return { ok: true };
+  return { ok: true, id };
 }
 
 export async function deleteListing(
