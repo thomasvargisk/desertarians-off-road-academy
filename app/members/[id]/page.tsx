@@ -1,11 +1,13 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getProfile } from "@/lib/members/actions";
+import { getUserReputationScore } from "@/lib/reputation/actions";
 
 export default async function MemberProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const profile = await getProfile(id);
   if (!profile) notFound();
+  const reputationScore = await getUserReputationScore(id);
 
   return (
     <section className="min-h-screen bg-desert-bg text-desert-fg">
@@ -26,7 +28,12 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
               </div>
             )}
             <div>
-              <h2 className="font-display font-bold text-2xl">{profile.displayName}</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="font-display font-bold text-2xl">{profile.displayName}</h2>
+                <span className="text-xs px-2 py-0.5 rounded bg-desert-accent text-desert-dark font-bold">
+                  {reputationScore} pts
+                </span>
+              </div>
               <p className="text-xs text-desert-muted">
                 Member since {new Date(profile.memberSince).toLocaleDateString()}
               </p>
