@@ -62,6 +62,11 @@ export async function SiteHeader() {
               {label}
             </Link>
           ))}
+          {user?.isAdmin && (
+            <Link href="/admin" className="text-sm font-bold text-desert-accent">
+              Admin
+            </Link>
+          )}
           <Link href="/settings" className="rounded-md border border-slate-300 px-3 py-2 text-sm font-bold">
             Display settings
           </Link>
@@ -77,6 +82,11 @@ export async function SiteHeader() {
                 {label}
               </Link>
             ))}
+            {user?.isAdmin && (
+              <Link href="/admin" className="block border-b border-slate-100 px-3 py-3 font-bold text-desert-accent">
+                Admin
+              </Link>
+            )}
             <Link href="/settings" className="block border-b border-slate-100 px-3 py-3 font-bold">
               Display settings
             </Link>
